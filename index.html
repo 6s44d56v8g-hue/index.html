@@ -110,13 +110,13 @@ function wrap(g,s,mw){const out=[];s.split('\n').forEach(p=>{let l='';p.split(' 
 function drawBody(g,body,y,h,fMax,fMin,F,it,sc){let fs=fMax,L;for(;fs>fMin;fs-=2){g.font=`${it?'italic ':''}400 ${fs}px ${F}`;L=wrap(g,body,432);if(L.length*fs*1.18<=h)break}
 g.font=`${it?'italic ':''}400 ${fs}px ${F}`;L=wrap(g,body,432);const lh=fs*1.18,mx=Math.max(0,L.length*lh-h),o=Math.min(Math.max(sc,0),mx);
 g.save();g.beginPath();g.rect(0,y,512,h);g.clip();L.forEach((l,i)=>g.fillText(l,40,y-o+i*lh));g.restore();
-if(mx>0){g.fillStyle='rgba(42,42,51,.28)';const bh=Math.max(30,h*h/(h+mx));g.fillRect(498,y+(h-bh)*(o/mx),5,bh)}return mx}
+if(mx>0){g.fillStyle='rgba(42,42,51,.28)';const bh=Math.max(30,h*h/(h+mx));g.fillRect(498,y+(h-bh)*(o/mx),5,bh);if(o<mx){g.font='400 30px Helvetica, Arial, sans-serif';g.fillStyle='rgba(42,42,51,.5)';g.fillText('⌄',236,y+h-4)}}return mx}
 function drawBack(n){const u=n.userData,g=u.cv2.getContext('2d'),S=512,F='"Helvetica Neue", Helvetica, Arial, sans-serif';g.fillStyle=u.color;g.fillRect(0,0,S,S);
 const gr=g.createLinearGradient(0,0,0,S);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(0,0,0,.09)');g.fillStyle=gr;g.fillRect(0,0,S,S);
 g.fillStyle='#2a2a33';g.textBaseline='top';let ts=44;g.font=`700 ${ts}px ${F}`;while(g.measureText(u.text).width>432&&ts>24){ts-=4;g.font=`700 ${ts}px ${F}`}
 g.fillText(u.text,40,50);const y0=50+ts*1.2;g.fillRect(40,y0,60,4);
 const k=u.exIdx||0,body=u.ex===undefined?'Chargement…':u.ex===null?'Exemples indisponibles.':!u.ex.length?'Aucun exemple trouvé.':'« '+u.ex[k]+' »';
-u.scMax[1]=drawBody(g,body,y0+26,S-y0-26-60,36,24,F,true,u.sc[1]);
+u.scMax[1]=drawBody(g,body,y0+26,S-y0-26-60,36,30,F,true,u.sc[1]);
 if(u.ex&&u.ex.length){g.font=`400 22px ${F}`;g.fillStyle='rgba(42,42,51,.5)';g.fillText(`Exemple ${k+1}/${u.ex.length}`,40,S-44)}
 if(n===viewing){g.font=`400 52px ${F}`;g.fillStyle='rgba(42,42,51,.35)';g.fillText('‹',8,S/2-30);if(u.ex&&u.ex.length>1)g.fillText('›',S-34,S/2-30)}
 u.map2.needsUpdate=true}
@@ -126,7 +126,7 @@ g.fillStyle='#2a2a33';g.textBaseline='top';
 if(u.def===undefined){const ph=!u.text,T=ph?'Écris un mot'+(u.blink?'|':''):u.text+(u.blink&&n===editing?'|':'');if(ph)g.fillStyle='rgba(42,42,51,.3)';let fs=84,L;for(;fs>20;fs-=4){g.font=`500 ${fs}px ${F}`;L=wrap(g,T,432);if(L.length*fs*1.12<=380)break}L.forEach((l,i)=>g.fillText(l,40,88+i*fs*1.12))}
 else{let ts=64;g.font=`700 ${ts}px ${F}`;while(g.measureText(u.text).width>432&&ts>24){ts-=4;g.font=`700 ${ts}px ${F}`}
 g.fillText(u.text,40,66);const y0=66+ts*1.2;g.fillRect(40,y0,60,4);
-u.scMax[0]=drawBody(g,u.def||'…',y0+26,S-y0-26-36,40,26,F,false,u.sc[0]);
+u.scMax[0]=drawBody(g,u.def||'…',y0+26,S-y0-26-36,40,32,F,false,u.sc[0]);
 if(n===viewing){g.font=`400 52px ${F}`;g.fillStyle='rgba(42,42,51,.35)';g.fillText('›',S-34,S/2-30)}}
 if(u.def!==undefined)drawBack(n);
 u.map.needsUpdate=true}
@@ -164,18 +164,20 @@ for(const t of [...new Set([w,w.toLowerCase()])]){
 const r=await fetch('https://fr.wiktionary.org/w/api.php?action=parse&prop=wikitext&format=json&redirects=1&origin=*&page='+encodeURIComponent(t));
 const j=await r.json();if(!j.parse)continue;
 const m=j.parse.wikitext['*'].match(/==\s*\{\{langue\|fr\}\}\s*==([\s\S]*?)(?=\n==\s*\{\{langue\||$)/);if(!m)continue;
-let pos='';const out=[],ex=[];
+let pos='';const out=[],ex=[],cnt={};
 m[1].split('\n').forEach(l=>{const h=l.match(/^=+\s*\{\{S\|([^|}]+)/);if(h){pos=h[1].trim();return}
 if(!POS[pos])return;
-if(/^#(?![#*:])/.test(l)&&out.length<2){const d=cleanW(l.replace(/^#\s*/,''));if(d.length>2)out.push((out.length?'':POS[pos]+' ')+d)}
-else if(/^#\*(?![*:])/.test(l)&&ex.length<4){const d=exFrom(l);if(d.length>6&&d.length<170)ex.push(d)}});
-if(out.length){const x=out.join(' — ');return {def:x.length>230?x.slice(0,227)+'…':x,ex}}}
+if(/^#(?![#*:])/.test(l)&&out.length<5){const d=cleanW(l.replace(/^#\s*/,''));if(d.length>2){const k=cnt[pos]=(cnt[pos]||0)+1;out.push((k===1?POS[pos]:k+'.')+' '+d)}}
+else if(/^#\*(?![*:])/.test(l)&&ex.length<6){const d=exFrom(l);if(d.length>6&&d.length<220)ex.push(d)}});
+if(out.length)return {def:out.join('\n').slice(0,900),ex}}
 return {def:'',ex:[]}}
 // Exemples complementaires : Tatoeba (phrases francaises, gratuit)
 async function tato(word){const r=await fetch('https://tatoeba.org/en/api_v0/search?from=fra&query='+encodeURIComponent(word));const j=await r.json(),w=word.toLowerCase();
 return (j.results||[]).map(x=>x.text).filter(t=>t&&t.length<=110&&t.toLowerCase().includes(w)).sort((a,b)=>a.length-b.length).slice(0,3)}
 const dd=x=>(x&&/^Définition indisponible/.test(x))?'':x;
-async function ensureEx(n){const u=n.userData;if((u.ex&&u.ex.length)||u.exTried)return;u.exTried=true;let ex=[];try{ex=await tato(u.text)}catch(e){ex=(u.ex===undefined||u.ex===null)?null:[]}u.ex=ex;if(viewing===n)drawBack(n);save()}
+async function exWiki(word){const r=await fetch('https://fr.wikipedia.org/w/api.php?action=query&list=search&format=json&origin=*&srlimit=20&srprop=snippet&srsearch='+encodeURIComponent('"'+word+'"'));const j=await r.json(),w=word.toLowerCase(),dc=document.createElement('textarea');
+return j.query.search.map(x=>{dc.innerHTML=x.snippet.replace(/<[^>]+>/g,'');return dc.value.replace(/\s+/g,' ').trim()}).filter(t=>t.length>40&&t.length<=200&&t.toLowerCase().includes(w)).slice(0,3)}
+async function ensureEx(n){const u=n.userData;if((u.ex&&u.ex.length)||u.exTried)return;u.exTried=true;let ex=[],bad=0;try{ex=await tato(u.text)}catch(e){bad++}if(!ex.length){try{ex=await exWiki(u.text)}catch(e){bad++}}if(!ex.length&&bad>=2)ex=(u.ex===undefined||u.ex===null)?null:[];u.ex=ex;if(viewing===n)drawBack(n);save()}
 async function define(n){const u=n.userData,w=u.text,id=u.q=(u.q||0)+1;u.def='';u.ex=undefined;u.exTried=false;u.err=false;u.sc=[0,0];drawNote(n);let v='',ex=[];
 try{const r=await wikt(w);v=r.def||'Aucune définition trouvée.';ex=r.ex}catch(e){u.err=true;ex=null;v='Définition indisponible ('+((e&&e.message)||'réseau')+').'}
 if(u.q===id){u.ex=ex;if(editing===n)u.oldDef=v;else{u.def=v;drawNote(n)}save()}}
